@@ -1,0 +1,16 @@
+Junkie is Copyright (C) 2010 by Securactive.
+
+It's distributed under the terms of the AGPLv3 license
+(http://www.gnu.org/licenses/agpl.html).
+
+However, some files are licensed under other licenses:
+
+libpcap library : BSD style license (3-clause BSD)
+guile library   : GNU Lesser General Public License, version 3 or later.
+openssl library : BSD style license + SSLeay license
+
+The complete text of the AGPLv3 license can be found in LICENSE.AGPL
+The complete text of the Modified BSD licence can be found in LICENSE.BSD
+The complete text of the GNU LGPL can be found in LICENSE.LGPL
+The complete text of the SSL license can be found in LICENSE.OpenSSL
+

@@ -1,0 +1,16 @@
+See Junkie --help for command line arguments.
+By itself, Junkie does nothing out of the parsed packets. In order to be
+usefull you thus have to load a plugin. For instance, the basic dumper
+plugin included in junkie distribution will display all gathered informations:
+
+junkie -i eth0 -p dumper.so
+
+Other plugins may be available to perform other less basic functionnalities,
+such as network related measurments of load, response times, security
+monitoring, etc... Or you can write those plugins yourself !
+
+Out of the box, junkie can also be used as an SNMP subagent, provided the
+snmp-subagt.scm configuration file is loaded (and an agentX snmp daemon is
+accepting connections localy). The implemented MIBS are located in the
+config subdirectory.
+

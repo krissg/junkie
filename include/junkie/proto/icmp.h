@@ -1,0 +1,40 @@
+// -*- c-basic-offset: 4; c-backslash-column: 79; indent-tabs-mode: nil -*-
+// vim:sw=4 ts=4 sts=4 expandtab
+#ifndef ICMP_H_100514
+#define ICMP_H_100514
+#include <stdint.h>
+#include <junkie/proto/proto.h>
+#include <junkie/tools/ip_addr.h>
+
+/** @file
+ * @brief ICMP informations
+ */
+
+extern struct proto *proto_icmp;
+extern struct proto *proto_icmpv6;
+
+/// ICMP message
+struct icmp_proto_info {
+    struct proto_info info;     ///< Header size correspond to the whole message since ICMP have no actual payload
+    uint8_t type, code;         ///< ICMP type and code
+#   define ICMP_ERR_SET      0x1  // at least protocol and addr
+#   define ICMP_ERR_PORT_SET 0x2
+    unsigned set_values;        ///< Mask of the field that are actually defined in this struct
+    struct icmp_err {
+        uint8_t protocol;       ///< The protocol that triggered the error
+        struct ip_addr addr[2]; ///< The IP addresses (src, dest) that triggered the error
+        uint16_t port[2];       ///< The ports that triggered the error (defined if set_values & ICMP_ERR_PORT_SET)
+    } err;                      ///< Defined if set_values & ICMP_ERR_SET
+};
+
+// Used by ICMPv6
+char *icmp_err_2_str(struct icmp_err const *err, unsigned set_values);
+int icmp_extract_err_ports(struct icmp_err *err, uint8_t const *packet);
+
+void icmp_init(void);
+void icmp_fini(void);
+
+void icmpv6_init(void);
+void icmpv6_fini(void);
+
+#endif

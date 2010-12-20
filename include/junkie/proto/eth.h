@@ -1,0 +1,42 @@
+// -*- c-basic-offset: 4; c-backslash-column: 79; indent-tabs-mode: nil -*-
+// vim:sw=4 ts=4 sts=4 expandtab
+#ifndef ETH_H_100402
+#define ETH_H_100402
+#include <netinet/ether.h>
+#include <junkie/proto/proto.h>
+#include <junkie/tools/queue.h>
+
+/** @file
+ * @brief Ethernet informations
+ */
+
+extern struct proto *proto_eth;
+
+/// Ethernet frame
+struct eth_proto_info {
+    struct proto_info info;             ///< Header and payload sizes
+    unsigned vlan_id;                   ///< Vlan identifier
+    unsigned char addr[2][ETH_ALEN];    ///< src/dest MAC addresses
+    unsigned protocol;                  ///< Embedded protocol
+};
+
+/// Other protos can register themselves as Eth subprotos by defining this struct
+struct eth_subproto {
+    LIST_ENTRY(eth_subproto) entry; ///< Entry in the list of all Eth subprotos
+    unsigned protocol;              ///< Protocol id implemented by the subproto
+    struct proto *proto;            ///< the subproto
+};
+
+/// Construct an eth_subproto (registering the protocol implementation)
+void eth_subproto_ctor(struct eth_subproto *eth_subproto, unsigned protocol, struct proto *proto);
+
+/// Destruct an eth_subproto (deregistering the protocol implementation)
+void eth_subproto_dtor(struct eth_subproto *eth_subproto);
+
+/// Spawn a new eth parser for given vlan_id
+struct mux_subparser *eth_subparser_and_parser_new(struct parser *, struct proto *proto, struct parser *requestor, uint16_t vlan_id, struct timeval const *now);
+
+void eth_init(void);
+void eth_fini(void);
+
+#endif

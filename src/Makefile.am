@@ -1,0 +1,22 @@
+SUBDIRS = tools proto .
+
+-include ../version.conf
+
+AM_CFLAGS = -std=c99 -Wall -W
+AM_CPPFLAGS = -I $(top_srcdir)/include -D_GNU_SOURCE -DTAGNAME=$(TAGNAME) -DBRANCHNAME=$(BRANCHNAME) -DCOMP_HOST=$(COMP_HOST)
+
+bin_PROGRAMS = junkie
+dist_bin_SCRIPTS = juncli
+
+junkie_SOURCES = \
+	digest_queue.c \
+	digest_queue.h \
+	ext.c \
+	main.c \
+	pkt_source.c \
+	pkt_source.h \
+	net_hdr.h \
+	plugins.c \
+	plugins.h
+
+junkie_LDADD = proto/libproto.la tools/libtools.la

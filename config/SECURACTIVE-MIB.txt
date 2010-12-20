@@ -1,0 +1,19 @@
+SECURACTIVE-MIB DEFINITIONS ::= BEGIN
+
+-- Check with :
+-- MIBS=ALL snmptranslate -Tp -IR securactive
+
+IMPORTS
+	enterprises FROM RFC1155-SMI
+	OBJECT-TYPE, MODULE-IDENTITY, NOTIFICATION-TYPE FROM SNMPv2-SMI;
+
+securactive MODULE-IDENTITY
+	LAST-UPDATED "201011030000Z"
+	ORGANIZATION "SecurActive SA"
+	CONTACT-INFO "info@securactive.net"
+	DESCRIPTION  "SecurActive PEN"
+	REVISION     "201011030000Z"
+	DESCRIPTION  "Initial version"
+	::= { enterprises 36773 }
+
+END

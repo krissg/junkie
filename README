@@ -1,0 +1,34 @@
+Meet Junkie the network sniffer!
+
+As the heart of SecurActive network performance monitoring application
+lies a real-time packet sniffer and analyzer. Modular enough to accomplish
+many different tasks, we believe this tool can be a helpful companion
+to the modern network administrator and analyst, and so we decided to offer it
+to the public under a liberal license so that the Open Source community can
+use it, play with it, and extend it with whatever feature is deemed
+appropriate.
+
+Compared to previously available tools junkie lies in between tcpdump and
+wireshark. Unlike tcpdump, its purpose is to parse protocols of any depth;
+unlike wireshark, through, junkie is designed to analyze traffic in real-time
+and so cannot parse traffic as completely as wireshark does.
+
+In addition, junkie's design encompasses extendability and speed:
+
+- plug-in system + high-level extension language that eases the development and
+  combination of new functionalities;
+
+- threaded packet capture and analysis for handling of high bandwidth network;
+
+- modular architecture to ease the addition of any protocol layer;
+
+- based on libpcap for portability;
+
+- well tested on professional settings.
+
+
+Junkie is still being maintained and extended by SecurActive dedicated team
+but we believe it can be further extended to fulfill many unforeseen purposes.
+
+Welcome abroad!
+
