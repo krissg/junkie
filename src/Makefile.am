@@ -1,9 +1,7 @@
 SUBDIRS = tools proto .
 
--include ../version.conf
-
 AM_CFLAGS = -std=c99 -Wall -W
-AM_CPPFLAGS = -I $(top_srcdir)/include -D_GNU_SOURCE -DTAGNAME=$(TAGNAME) -DBRANCHNAME=$(BRANCHNAME) -DCOMP_HOST=$(COMP_HOST)
+AM_CPPFLAGS = -I $(top_srcdir)/include -D_GNU_SOURCE -DTAGNAME=@TAGNAME@ -DBRANCHNAME=@BRANCHNAME@ -DCOMP_HOST=@COMP_HOST@
 
 bin_PROGRAMS = junkie
 dist_bin_SCRIPTS = juncli

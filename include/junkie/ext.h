@@ -43,7 +43,7 @@
 
 /** This is build from the package version, and made accessible from guile
  * via the global binding 'junkie-version' */
-extern char version_string[];
+extern char version_string[1024];
 
 /// Initialize the extension language, and evaluates a set of expressions.
 /** These expressions come from the command line arguments, which are all

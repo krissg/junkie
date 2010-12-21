@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = color-tests
 AM_CFLAGS = -std=c99 -Wall -W
-AM_CPPFLAGS = -I $(top_srcdir)/include -D_GNU_SOURCE
+AM_CPPFLAGS = -I $(top_srcdir)/include -I $(top_srcdir)/src -I $(top_srcdir)/src/proto -D_GNU_SOURCE -DSRCDIR=$(top_srcdir)/tests
 
 check_PROGRAMS = \
 	digest_queue_check timeval_check files_check \

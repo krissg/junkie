@@ -52,4 +52,3 @@ tests/timeval_check
 tests/udp_check
 doxydoc
 config/instvars.scm
-version.conf

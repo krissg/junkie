@@ -33,6 +33,8 @@
 
 static char const Id[] = "$Id: 95a67137f8731eff13f99892ff17970aa6f224b8 $";
 
+char version_string[1024];
+
 struct ext_functions ext_functions = SLIST_HEAD_INITIALIZER(&ext_functions);
 
 void ext_function_ctor(struct ext_function *ef, char const *name, int req, int opt, int rest, SCM (*impl)(), char const *doc)

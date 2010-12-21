@@ -11,6 +11,10 @@ AC_CONFIG_SRCDIR([src/main.c])
 AC_CONFIG_HEADERS([src/config.h])
 LT_INIT()
 
+AC_SUBST(TAGNAME, m4_esyscmd([git describe --tags]))
+AC_SUBST(BRANCHNAME, m4_esyscmd([git symbolic-ref HEAD | cut -d/ -f 3-]))
+AC_SUBST(COMP_HOST, m4_esyscmd([hostname]))
+
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_MAKE_SET

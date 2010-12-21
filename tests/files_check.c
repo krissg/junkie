@@ -46,7 +46,7 @@ static int line_cb(char *line, size_t len, va_list ap)
 
 static void foreach_line_check(void)
 {
-    int err = file_foreach_line("foreach.txt", line_cb, 1);
+    int err = file_foreach_line(STRIZE(SRCDIR) "/foreach.txt", line_cb, 1);
     assert(! err);
 }
 
