@@ -235,7 +235,7 @@ SLIST_HEAD(ext_functions, ext_function) ext_functions;
 /// Describes an extension function, implemented in C and callable from guile
 struct ext_function {
     SLIST_ENTRY(ext_function) entry;    ///< Entry in the list of all ext_functions
-    char const *scm_name;               ///< Name of the function for guile
+    char const *name;                   ///< Name of the function for guile
     int req, opt, rest;                 ///< Number of required arguments, optional arguments, rest arguments
     SCM (*implementation)();            ///< C implementation
     char const *doc;                    ///< Docstring

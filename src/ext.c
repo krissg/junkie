@@ -39,7 +39,7 @@ struct ext_functions ext_functions = SLIST_HEAD_INITIALIZER(&ext_functions);
 
 void ext_function_ctor(struct ext_function *ef, char const *name, int req, int opt, int rest, SCM (*impl)(), char const *doc)
 {
-    ef->scm_name = name;
+    ef->name = name;
     ef->req = req;
     ef->opt = opt;
     ef->rest = rest;
@@ -117,9 +117,9 @@ void ext_rebind(void)
     SLIST_FOREACH(ef, &ext_functions, entry) {
         if (ef->bound) continue;
         if (! ef->implementation) continue;
-        SLOG(LOG_INFO, "New extension function %s", ef->scm_name);
-        scm_c_define_gsubr(ef->scm_name, ef->req, ef->opt, ef->rest, ef->implementation);
-        scm_c_export(ef->scm_name, NULL);
+        SLOG(LOG_INFO, "New extension function %s", ef->name);
+        scm_c_define_gsubr(ef->name, ef->req, ef->opt, ef->rest, ef->implementation);
+        scm_c_export(ef->name, NULL);
         ef->bound = true;
     }
 
@@ -190,54 +190,39 @@ static SCM help_page_param(struct ext_param const *param)
     return scm_from_locale_string(param->doc);
 }
 
-static SCM all_fun_help(SCM list, struct ext_function const *fun)
+static SCM all_fun_help(SCM list, struct ext_function const *fun, char const *pattern)
 {
-    SCM new_list = scm_cons(help_page_fun(fun), list);
+    if (! fun) return list;
 
-    struct ext_function const *next = SLIST_NEXT(fun, entry);
-    return next ? all_fun_help(new_list, next) : new_list;
+    if (NULL != strstr(fun->name, pattern)) {
+        return all_fun_help(scm_cons(help_page_fun(fun), list), SLIST_NEXT(fun, entry), pattern);
+    }
+    return all_fun_help(list, SLIST_NEXT(fun, entry), pattern);
 }
 
-static SCM all_param_help(SCM list, struct ext_param *param)
+static SCM all_param_help(SCM list, struct ext_param *param, char const *pattern)
 {
     if (! param) return list;
-    return all_param_help(scm_cons(help_page_param(param), list), SLIST_NEXT(param, entry));
+
+    if (NULL != strstr(param->name, pattern)) {
+        return all_param_help(scm_cons(help_page_param(param), list), SLIST_NEXT(param, entry), pattern);
+    }
+    return all_param_help(list, SLIST_NEXT(param, entry), pattern);
 }
 
 static struct ext_function sg_help;
 static SCM g_help(SCM topic)
 {
     // topic might be a symbol or a string, or nothing.
-    if (topic == SCM_UNDEFINED) {
-        return all_fun_help(
-            all_param_help(SCM_EOL, SLIST_FIRST(&ext_params)),
-            SLIST_FIRST(&ext_functions));
-    } else if (scm_is_symbol(topic)) {
+    if (scm_is_symbol(topic)) {  // Returns this very docstring
         return g_help(scm_symbol_to_string(topic));
-    } else if (scm_is_string(topic)) {
-        SCM ret = SCM_UNSPECIFIED;
-        scm_dynwind_begin(0);
-        char *str = scm_to_locale_string(topic);
-        scm_dynwind_free(str);
-        struct ext_function *fun;
-        SLIST_FOREACH(fun, &ext_functions, entry) {
-            if (0 == strcmp(fun->scm_name, str)) {
-                ret = help_page_fun(fun);
-                break;
-            }
-        }
-        struct ext_param *param;
-        SLIST_FOREACH(param, &ext_params, entry) {
-            if (0 == strcmp(param->name, str)) {
-                ret = help_page_param(param);
-                break;
-            }
-        }
-        scm_dynwind_end();
-        return ret;
+    } else {    // Returns the list of all matching docstrings
+        char const *pattern = scm_is_string(topic) ? scm_to_tempstr(topic) : "";
+        return all_fun_help(
+            all_param_help(SCM_EOL, SLIST_FIRST(&ext_params), pattern),
+            SLIST_FIRST(&ext_functions),
+            pattern);
     }
-    // Else try giving the idiot user some clue
-    return scm_from_locale_string("Try (?) maybe ?");
 }
 
 /*
