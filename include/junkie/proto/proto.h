@@ -332,12 +332,12 @@ struct mux_subparser;
  * responsible for the payload. Similarly, TCP is a multiplexer using the
  * ports pair to choose amongst its children the one in charge for a payload.
  *
- * Multiplexers can not be stateless, since each instance of a multiplexer
- * must carry a list of it's children; for performance reason actually not a
- * list but a hash. But many parsers share a common behavior : from the header
+ * Multiplexers can not be stateless, since each instance of a multiplexer must
+ * carry a list of it's children; for performance reason actually not a list
+ * but a hash. But many multiplexers share a common behavior : from the header
  * of their data, build a key that identifies a children, then lookup in the
- * children list (hash) the one in charge for this key, or create a new one
- * if none is found.
+ * children list (hash) the one in charge for this key, or create a new one if
+ * none is found.
  *
  * struct mux_proto/mux_parser implement this common behavior, given a small
  * set of parameters :
@@ -355,11 +355,11 @@ struct mux_subparser;
  * parse the payload (for instance, it need the query to parse the answer, or
  * just want to repeat the query in the proto_info of the answer for
  * simplicity). This mean, for instance, that the same TCP parser that handles
- * the TCP payload from ipA to ipB also handles the payload from ipB to ipB
+ * the TCP payload from ipA to ipB also handles the payload from ipB to ipA
  * (and so on). In this very example it implies that the IP parser must use the
  * same key for (TCP, ipA, ipB) than for (TCP, ipB, ipA). This is easily done
- * for instance if the IP key is build with sorted IP addresses for instance
- * storing always smallest IP first (this is actually exactly what's done).
+ * for instance if the IP key is build with sorted IP addresses, for instance
+ * storing always smallest IP first (this is actually what's done).
  *
  * But this TCP parser itself must pass its payload from ipA:portA->ipB:portB
  * to the same child than the one receiving payload from ipB:portB->ipA:portA.
