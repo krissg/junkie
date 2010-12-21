@@ -21,11 +21,11 @@ AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
 # Checks for libraries.
-AC_CHECK_LIB(ssl, SHA1)
-AC_CHECK_LIB(pcap, pcap_activate)
-AC_CHECK_LIB(guile, scm_with_guile)
-AC_CHECK_LIB(pthread, pthread_mutex_init)
-AC_CHECK_LIB(ltdl, lt_dlopen)
+AC_CHECK_LIB(ssl, SHA1, , [exit 1])
+AC_CHECK_LIB(pcap, pcap_activate, , [exit 1])
+AC_CHECK_LIB(guile, scm_with_guile, , [exit 1])
+AC_CHECK_LIB(pthread, pthread_mutex_init, , [exit 1])
+AC_CHECK_LIB(ltdl, lt_dlopen, , [exit 1])
 
 # Checks for header files.
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netinet/in.h sys/param.h sys/socket.h sys/time.h syslog.h sys/prctl.h])
