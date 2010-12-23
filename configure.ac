@@ -3,7 +3,7 @@
 AC_PREREQ([2.65])
 
 # These git commands will disapear from the generated configure script
-AC_INIT(junkie, m4_esyscmd([(git describe --tags || (git symbolic-ref HEAD | cut -d/ -f 3-)) | tr -d '\n']), github@securactive.net, , http://github.com/securactive/junkie)
+AC_INIT(junkie, m4_esyscmd([(git describe --tags || (if git symbolic-ref HEAD >/dev/null 2>&1; then git symbolic-ref HEAD | cut -d/ -f 3- ; else git name-rev HEAD | cut -d' ' -f 2; fi)) | tr -d '\n']), github@securactive.net, , http://github.com/securactive/junkie)
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall foreign])
@@ -12,7 +12,7 @@ AC_CONFIG_HEADERS([src/config.h])
 LT_INIT()
 
 AC_SUBST(TAGNAME, m4_esyscmd([git describe --tags]))
-AC_SUBST(BRANCHNAME, m4_esyscmd([git symbolic-ref HEAD | cut -d/ -f 3-]))
+AC_SUBST(BRANCHNAME, m4_esyscmd([if git symbolic-ref HEAD >/dev/null 2>&1; then git symbolic-ref HEAD | cut -d/ -f 3- ; else git name-rev HEAD | cut -d' ' -f 2; fi]))
 AC_SUBST(COMP_HOST, m4_esyscmd([hostname]))
 
 # Checks for programs.

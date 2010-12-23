@@ -3,7 +3,8 @@
 
 set -e
 
-libtoolize &&
+mkdir -p build-aux &&
+libtoolize --force &&
 aclocal &&
 autoheader &&
 automake --add-missing --foreign &&
