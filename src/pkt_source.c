@@ -33,10 +33,10 @@
 #include <junkie/tools/queue.h>
 #include <junkie/proto/cap.h>
 #include <junkie/proto/proto.h>
+#include <junkie/ext.h>
 #include "plugins.h"
 #include "net_hdr.h"
 #include "digest_queue.h"
-#include <junkie/ext.h>
 
 static char const Id[] = "$Id: 39b7df38bd54e40f37c33511c3ab617d6b719437 $";
 
@@ -221,6 +221,24 @@ static void *file_sniffer(void *pkt_source_)
  * Ctor/Dtor of pkt_sources
  */
 
+static int set_filter(pcap_t *pcap_handle, char const *filter)
+{
+    struct bpf_program fp;
+
+    if (filter[0] == '\0') return 0;
+
+    if (0 != pcap_compile(pcap_handle, &fp, filter, 1, 0)) {
+        SLOG(LOG_ERR, "Cannot parse filter %s: %s\n", filter, pcap_geterr(pcap_handle));
+        return -1;
+    }
+    if (0 != pcap_setfilter(pcap_handle, &fp)) {
+        SLOG(LOG_ERR, "Cannot install filter %s: %s\n", filter, pcap_geterr(pcap_handle));
+        return -1;
+    }
+
+    return 0;
+}
+
 static int pkt_source_ctor(struct pkt_source *pkt_source, char const *name, pcap_t *pcap_handle, void *(*sniffer)(void *), bool is_file)
 {
     int ret = 0;
@@ -270,11 +288,11 @@ static struct pkt_source *pkt_source_new(char const *name, pcap_t *pcap_handle, 
     return pkt_source;
 }
 
-static struct pkt_source *pkt_source_new_file(char const *filename)  // TODO: add parameter regarding speed of replay etc...
+static struct pkt_source *pkt_source_new_file(char const *filename, char const *filter)  // TODO: add parameter regarding speed of replay etc...
 {
     char errbuf[PCAP_ERRBUF_SIZE] = "";
 
-    SLOG(LOG_DEBUG, "Opening pcap file '%s'", filename);
+    SLOG(LOG_DEBUG, "Opening pcap file '%s' with filter %s", filename, filter ? filter:"NONE");
 
     pcap_t *handle = pcap_open_offline(filename, errbuf);
     if (! handle) {
@@ -288,6 +306,11 @@ static struct pkt_source *pkt_source_new_file(char const *filename)  // TODO: ad
     char const *basename = filename;
     for (char const *c = filename; *c != '\0'; c++) {
         if (*c == '/') basename = c+1;
+    }
+
+    if (filter && 0 != set_filter(handle, filter)) {
+        pcap_close(handle);
+        return NULL;
     }
 
     struct pkt_source *pkt_source = pkt_source_new(basename, handle, file_sniffer, true);
@@ -307,11 +330,11 @@ static void quit_if_nothing_opened(void)
     }
 }
 
-static struct pkt_source *pkt_source_new_if(char const *ifname, bool promisc, int buffer_size)
+static struct pkt_source *pkt_source_new_if(char const *ifname, bool promisc, char const *filter, int buffer_size)
 {
     char errbuf[PCAP_ERRBUF_SIZE] = "";
 
-    SLOG(LOG_INFO, "Opening pcap device '%s'%s, with buffer size %d", ifname, promisc ? " in promiscuous mode":"", buffer_size);
+    SLOG(LOG_INFO, "Opening pcap device '%s'%s with filter %s and buffer size %d", ifname, promisc ? " in promiscuous mode":"", filter ? filter:"NONE", buffer_size);
 
     pcap_t *handle = pcap_create(ifname, errbuf);
     if (! handle) {
@@ -335,13 +358,18 @@ static struct pkt_source *pkt_source_new_if(char const *ifname, bool promisc, in
     }
 
     if (0 != pcap_set_timeout(handle, 1000)) {
-        SLOG(LOG_ALERT, "Cannot suppress timeout for packet source %s : %s", ifname, pcap_geterr(handle));
+        SLOG(LOG_ALERT, "Cannot set timeout for packet source %s : %s", ifname, pcap_geterr(handle));
         goto err1;
     }
 
     if (0 != pcap_activate(handle)) {
         SLOG(LOG_ALERT, "Cannot activate packet source %s : %s", ifname, pcap_geterr(handle));
         goto err1;
+    }
+
+    if (filter && 0 != set_filter(handle, filter)) {
+        pcap_close(handle);
+        return NULL;
     }
 
     struct pkt_source *pkt_source = pkt_source_new(ifname, handle, iface_sniffer, false);
@@ -391,23 +419,6 @@ static void pkt_source_terminate_all(void)
     }
 }
 
-static int pkt_source_set_filter(struct pkt_source *pkt_source, char const *filter)
-{
-    struct bpf_program fp;
-    SLOG(LOG_DEBUG, "Setting filter for packet source %s to '%s'", pkt_source_name(pkt_source), filter);
-
-    if (0 != pcap_compile(pkt_source->pcap_handle, &fp, filter, 1, 0)) {
-        SLOG(LOG_ERR, "Cannot parse filter %s for packet source %s: %s\n", filter, pkt_source_name(pkt_source), pcap_geterr(pkt_source->pcap_handle));
-        return -1;
-    }
-    if (0 != pcap_setfilter(pkt_source->pcap_handle, &fp)) {
-        SLOG(LOG_ERR, "Cannot install filter %s for packet source %s: %s\n", filter, pkt_source_name(pkt_source), pcap_geterr(pkt_source->pcap_handle));
-        return -1;
-    }
-
-    return 0;
-}
-
 /*
  * Guile access functions
  */
@@ -448,22 +459,24 @@ static struct pkt_source *pkt_source_of_scm(SCM ifname_)
 }
 
 static struct ext_function sg_open_iface;
-static SCM g_open_iface(SCM ifname_, SCM promisc_, SCM buffer_size_)
+static SCM g_open_iface(SCM ifname_, SCM promisc_, SCM filter_, SCM buffer_size_)
 {
     char *ifname = scm_to_tempstr(ifname_);
     bool promisc = promisc_ == SCM_UNDEFINED || scm_to_bool(promisc_);
+    char const *filter = filter_ == SCM_UNDEFINED ? NULL : scm_to_tempstr(filter_);
     int buffer_size = buffer_size_ == SCM_UNDEFINED ? 0 : scm_to_int(buffer_size_);
 
-    struct pkt_source *pkt_source = pkt_source_new_if(ifname, promisc, buffer_size);
+    struct pkt_source *pkt_source = pkt_source_new_if(ifname, promisc, filter, buffer_size);
     return pkt_source ? scm_from_locale_string(pkt_source_guile_name(pkt_source)) : SCM_UNSPECIFIED;
 }
 
 static struct ext_function sg_open_pcap;
-static SCM g_open_pcap(SCM filename_)
+static SCM g_open_pcap(SCM filename_, SCM filter_)
 {
-    char *filename = scm_to_tempstr(filename_);
+    char const *filename = scm_to_tempstr(filename_);
+    char const *filter = filter_ == SCM_UNDEFINED ? NULL : scm_to_tempstr(filter_);
 
-    struct pkt_source *pkt_source = pkt_source_new_file(filename);
+    struct pkt_source *pkt_source = pkt_source_new_file(filename, filter);
     return pkt_source ? SCM_BOOL_T : SCM_BOOL_F;
 }
 
@@ -477,24 +490,6 @@ static SCM g_close_iface(SCM ifname_)
     if (pkt_source) {
         pkt_source_terminate(pkt_source);
         ret = SCM_BOOL_T;
-    }
-
-    mutex_unlock(&pkt_sources_lock);
-    return ret;
-}
-
-static struct ext_function sg_set_iface_filter;
-static SCM g_set_iface_filter(SCM ifname_, SCM filter_)
-{
-    mutex_lock(&pkt_sources_lock);
-    struct pkt_source *pkt_source = pkt_source_of_scm(ifname_);
-    SCM ret = SCM_BOOL_F;
-
-    if (pkt_source) {
-        char *filter = scm_to_tempstr(filter_);
-        if (0 == pkt_source_set_filter(pkt_source, filter)) {
-            ret = SCM_BOOL_T;
-        }
     }
 
     mutex_unlock(&pkt_sources_lock);
@@ -562,12 +557,14 @@ void pkt_source_init(void)
         "See also (? 'open-iface) to start sniffing an interface.\n");
 
     ext_function_ctor(&sg_open_iface,
-        "open-iface", 1, 2, 0, g_open_iface,
+        "open-iface", 1, 3, 0, g_open_iface,
         "(open-iface \"iface-name\") : open the given iface, and set it in promiscuous mode.\n"
         "(open-iface \"iface-name\" #f) : open the given iface without setting it\n"
         "    in promiscuous mode.\n"
-        "(open-iface \"iface-name\" #t (* 10 1024 1024)) : open the given iface,\n"
-        "    set it in promiscuous mode, and use a buffer size of 10Mb.\n"
+        "(open-iface \"iface-name\" #t \"filter\") : open the given iface in promiscuous mode,\n"
+        "    with the given packet filter.\n"
+        "(open-iface \"iface-name\" #t \"[filter]\" (* 10 1024 1024)) : open the given iface,\n"
+        "    set it in promiscuous mode, apply the filter, and use a buffer size of 10Mb.\n"
         "Will return #t or #f depending on the success of the operation.\n"
         "See also (? 'list-ifaces) to have a list of all openable ifaces,\n"
         "    and (? 'close-iface) to close a given iface\n");
@@ -578,15 +575,11 @@ void pkt_source_init(void)
         "See also (? 'open-iface).\n");
 
     ext_function_ctor(&sg_open_pcap,
-        "open-pcap", 1, 0, 0, g_open_pcap,
+        "open-pcap", 1, 1, 0, g_open_pcap,
         "(open-pcap \"pcap-file\") : will start sniffing the content of this pcap file.\n"
+        "(open-pcap \"pcap-file\" \"filter\") : same as above, applying given filter.\n"
         "Will return #t or #f according to the status of the operation.\n"
         "See also (? 'open-iface)\n");
-
-    ext_function_ctor(&sg_set_iface_filter,
-        "set-iface-filter", 2, 0, 0, g_set_iface_filter,
-        "(set-iface-filter \"iface-name\" \"pcap filter\") : apply the given filter to the opened iface-name.\n"
-        "See also (? 'open-iface).\n");
 
     ext_function_ctor(&sg_iface_names,
         "iface-names", 0, 0, 0, g_iface_names,

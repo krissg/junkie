@@ -146,7 +146,7 @@
 
 (define (set-ifaces pattern)
   (for-each
-    (lambda (ifname) (open-iface ifname #t bufsize))
+    (lambda (ifname) (open-iface ifname #t "" bufsize))
     (ifaces-matching pattern)))
 
 (define (get-ifaces) (iface-names))
@@ -166,9 +166,10 @@
 ; Equivalent of set-ifaces for multiple CPUs
 (define (open-iface-multiple n . args)
   (let* ((ifname      (car args))
+         (promisc     (catch 'wrong-type-arg (lambda () (cadr  args)) (lambda (k . a) #t)))
+         (bufsize     (catch 'wrong-type-arg (lambda () (caddr args)) (lambda (k . a) bufsize)))
          (filters     (pcap-filters-for-split n))
-         (open-single (lambda (flt)
-                        (set-iface-filter (apply open-iface args) flt))))
+         (open-single (lambda (flt) (open-iface ifname promisc flt bufsize))))
     (for-each open-single filters)))
 
 (define (set-ifaces-multiple n pattern)
