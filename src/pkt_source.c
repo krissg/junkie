@@ -62,6 +62,10 @@ EXT_PARAM_RW(quit_when_done, "quit-when-done", bool, "Should junkie exits when t
 
 static struct digest_queue digests;
 
+LOG_CATEGORY_DEF(pkt_sources);
+#undef LOG_CAT
+#define LOG_CAT pkt_sources_log_category
+
 /*
  * Tools
  */
@@ -548,6 +552,7 @@ void pkt_source_init(void)
     ext_param_dup_detection_delay_init();
     ext_param_nb_duplicates_init();
     ext_param_quit_when_done_init();
+    log_category_pkt_sources_init();
 
     ext_function_ctor(&sg_list_ifaces,
         "list-ifaces", 0, 0, 0, g_list_ifaces,
@@ -617,6 +622,7 @@ void pkt_source_fini(void)
     mutex_dtor(&pkt_sources_lock);
     digest_queue_dtor(&digests);
 
+    log_category_pkt_sources_fini();
     ext_param_dup_detection_delay_fini();
     ext_param_nb_duplicates_fini();
     ext_param_quit_when_done_fini();
