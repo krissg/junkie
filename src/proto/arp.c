@@ -80,9 +80,9 @@ static void fetch_ip(struct ip_addr *ip, uint16_t ar_pro, uint8_t const *ptr)
 static void fetch_hw(uint8_t mac[ETH_ALEN], uint16_t ar_hrd, uint8_t const *ptr)
 {
     if (ar_hrd == 1) {
-        memcpy(mac, ptr, 16);
+        memcpy(mac, ptr, sizeof(mac));
     } else {
-        memset(mac, 0, 16);
+        memset(mac, 0, sizeof(mac));
     }
 }
 
