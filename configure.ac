@@ -39,6 +39,10 @@ AC_TYPE_PID_T
 AC_FUNC_CHOWN
 AC_CHECK_FUNCS([clock_gettime localtime_r mkdir regcomp rmdir sqrt strcasecmp strncasecmp strtoull prctl])
 
+# Where to install various things
+AC_ARG_VAR([CONFDIR], [Where to store configuration files [SYSCONFDIR/junkie]])
+AS_IF([test "x$CONFDIR" = x], [CONFDIR="$sysconfdir/junkie"])
+
 AC_CONFIG_FILES([
 	Makefile
 	include/Makefile
