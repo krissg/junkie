@@ -16,3 +16,5 @@ instvars.scm:
 	@echo '(define libdir "$(libdir)")' >> $@
 	@echo '(define confdir "$(pkgsysconfdir)")' >> $@
 
+clean-local:
+	@rm -f instvars.scm
