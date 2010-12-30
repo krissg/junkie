@@ -23,8 +23,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <inttypes.h>
-#include <netinet/ether.h>
-#include <arpa/inet.h>
 #include <junkie/cpp.h>
 #include <junkie/tools/log.h>
 #include <junkie/tools/tempstr.h>
@@ -50,16 +48,23 @@ static bool collapse_vlans = true;
 EXT_PARAM_RW(collapse_vlans, "collapse-vlans", bool, "Set to true if packets from distinct vlans share the same address range");
 static const uint16_t zero = 0;
 
+// Description of an Ethernet header
+struct eth_hdr {
+	unsigned char dst[ETH_ADDR_LEN];
+	unsigned char src[ETH_ADDR_LEN];
+	uint16_t proto;
+} packed_;
+
 /*
  * Proto Infos
  */
 
-char const *eth_addr_2_str(unsigned char const addr[ETH_ALEN])
+char const *eth_addr_2_str(unsigned char const addr[ETH_ADDR_LEN])
 {
     char *str = tempstr();
     size_t len = 0;
     unsigned i;
-    for (i = 0; i < ETH_ALEN; i ++) {
+    for (i = 0; i < ETH_ADDR_LEN; i ++) {
         len += snprintf(str+len, TEMPSTR_SIZE-len, "%s%.02x", len > 0 ? ":":"", addr[i]);
     }
     return str;
@@ -78,7 +83,7 @@ static char const *eth_info_2_str(struct proto_info const *info_)
     return str;
 }
 
-static void eth_proto_info_ctor(struct eth_proto_info *info, size_t head_len, size_t payload, uint16_t proto, uint16_t vlan_id, struct ethhdr const *ethhdr)
+static void eth_proto_info_ctor(struct eth_proto_info *info, size_t head_len, size_t payload, uint16_t proto, uint16_t vlan_id, struct eth_hdr const *ethhdr)
 {
     static struct proto_info_ops ops = {
         .to_str = eth_info_2_str,
@@ -86,10 +91,10 @@ static void eth_proto_info_ctor(struct eth_proto_info *info, size_t head_len, si
     proto_info_ctor(&info->info, &ops, head_len, payload);
 
     info->vlan_id = collapse_vlans ? zero : vlan_id;
-    ASSERT_COMPILE(sizeof(info->addr[0]) == sizeof(ethhdr->h_source));
-    memcpy(info->addr[0], ethhdr->h_source, sizeof(info->addr[0]));
-    ASSERT_COMPILE(sizeof(info->addr[1]) == sizeof(ethhdr->h_dest));
-    memcpy(info->addr[1], ethhdr->h_dest, sizeof(info->addr[1]));
+    ASSERT_COMPILE(sizeof(info->addr[0]) == sizeof(ethhdr->src));
+    memcpy(info->addr[0], ethhdr->src, sizeof(info->addr[0]));
+    ASSERT_COMPILE(sizeof(info->addr[1]) == sizeof(ethhdr->dst));
+    memcpy(info->addr[1], ethhdr->dst, sizeof(info->addr[1]));
     info->protocol = proto;
 }
 
@@ -126,8 +131,8 @@ struct mux_subparser *eth_subparser_and_parser_new(struct parser *parser, struct
 static enum proto_parse_status eth_parse(struct parser *parser, struct proto_layer *parent, unsigned way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
     struct mux_parser *mux_parser = DOWNCAST(parser, parser, mux_parser);
-    struct ethhdr const *ethhdr = (struct ethhdr *)packet;
-    uint16_t h_proto = ntohs(ethhdr->h_proto);
+    struct eth_hdr const *ethhdr = (struct eth_hdr *)packet;
+    uint16_t h_proto = ntohs(ethhdr->proto);
     uint16_t vlan_id = 0;
     size_t ethhdr_len = sizeof(*ethhdr);
 
@@ -149,7 +154,7 @@ static enum proto_parse_status eth_parse(struct parser *parser, struct proto_lay
         // We dont care about the source MAC being funny
     }
 
-    if (h_proto == ETH_P_8021Q) {   // Take into account 802.1q vlan tag
+    if (h_proto == ETH_PROTO_8021Q) {   // Take into account 802.1q vlan tag
         if (cap_len < ethhdr_len + 4) return PROTO_TOO_SHORT;
         struct eth_vlan {
             uint16_t vlan_id, h_proto;

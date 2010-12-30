@@ -21,12 +21,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <arpa/inet.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/ip.h>
 #include <junkie/tools/tempstr.h>
 #include <junkie/proto/ip.h>
 #include <junkie/proto/icmp.h>
+#include "proto/ip_hdr.h"
 
 static char const Id[] = "$Id: cec9e9e404a6e9491b912c6adb58350490d49047 $";
 
@@ -175,8 +173,8 @@ static int icmp_extract_err_infos(struct icmp_proto_info *info, uint8_t const *p
         SLOG(LOG_DEBUG, "Bogus ICMP err : packet too short for IP header");
         return -1;
     }
-    struct iphdr const *iphdr = (struct iphdr const *)packet;
-    size_t iphdr_len = iphdr->ihl * 4;
+    struct ip_hdr const *iphdr = (struct ip_hdr const *)packet;
+    size_t iphdr_len = iphdr->hdr_len * 4;
     if (iphdr_len > packet_len - 8) {
         SLOG(LOG_DEBUG, "Bogus ICMP packet IP header too long (%zu > %zu)",
             iphdr_len, packet_len = 8);
@@ -184,8 +182,8 @@ static int icmp_extract_err_infos(struct icmp_proto_info *info, uint8_t const *p
     }
 
     err->protocol = iphdr->protocol;
-    ip_addr_ctor_from_ip4(err->addr+0, iphdr->saddr);
-    ip_addr_ctor_from_ip4(err->addr+1, iphdr->daddr);
+    ip_addr_ctor_from_ip4(err->addr+0, iphdr->src);
+    ip_addr_ctor_from_ip4(err->addr+1, iphdr->dst);
 
     switch (iphdr->protocol) {
         case IPPROTO_TCP:
@@ -218,7 +216,7 @@ static bool icmp_is_err(uint8_t type)
 
 static enum proto_parse_status icmp_parse(struct parser *parser, struct proto_layer *parent, unsigned way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
-    struct icmphdr *icmphdr = (struct icmphdr *)packet;
+    struct icmp_hdr *icmphdr = (struct icmp_hdr *)packet;
 
     // Sanity checks
     if (wire_len < sizeof(*icmphdr)) return PROTO_PARSE_ERR;

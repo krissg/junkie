@@ -28,8 +28,8 @@
 #include <junkie/tools/mallocer.h>
 #include <junkie/cpp.h>
 #include "digest_queue.h"
-#include "net_hdr.h"
 
+static char const Id[] = "$Id$";
 
 void digest_queue_ctor(struct digest_queue *q, size_t size)
 {
@@ -42,26 +42,36 @@ void digest_queue_ctor(struct digest_queue *q, size_t size)
     memset(q->digests, 0, q->size * sizeof q->digests);
 }
 
-
 void digest_queue_dtor(struct digest_queue *q)
 {
     FREE(q->digests);
     memset(q, 0, sizeof q);
 }
 
-
-
-void
-digest_queue_push(struct digest_queue *q, uint8_t digest[DIGEST_SIZE],
-                  const struct frame *frm)
+void digest_queue_push(struct digest_queue *q, uint8_t digest[DIGEST_SIZE], const struct frame *frm)
 {
     q->idx = (q->idx + 1) % q->size;
     memcpy(q->digests[q->idx].digest, digest, DIGEST_SIZE);
     q->digests[q->idx].tv   = frm->tv;
 }
 
-
 #define BUFSIZE_TO_HASH 64
+
+#define ETHER_DST_ADDR_OFFSET   0
+#define ETHER_SRC_ADDR_OFFSET   ETHER_DST_ADDR_OFFSET + 6
+#define ETHER_ETHERTYPE_OFFSET  ETHER_SRC_ADDR_OFFSET + 6
+#define ETHER_HEADER_SIZE       ETHER_ETHERTYPE_OFFSET + 2
+
+#define IPV4_VERSION_OFFSET     0
+#define IPV4_TOS_OFFSET         IPV4_VERSION_OFFSET + 1
+#define IPV4_LEN_OFFSET         IPV4_TOS_OFFSET + 1
+#define IPV4_ID_OFFSET          IPV4_LEN_OFFSET + 2
+#define IPV4_OFF_OFFSET         IPV4_ID_OFFSET + 2
+#define IPV4_TTL_OFFSET         IPV4_OFF_OFFSET + 2
+#define IPV4_PROTO_OFFSET       IPV4_TTL_OFFSET + 1
+#define IPV4_CHECKSUM_OFFSET    IPV4_PROTO_OFFSET + 1
+#define IPV4_SRC_HOST_OFFSET    IPV4_CHECKSUM_OFFSET + 2
+#define IPV4_DST_HOST_OFFSET    IPV4_SRC_HOST_OFFSET + 4
 
 void digest_frame(uint8_t *buf, struct frame *frm)
 {

@@ -23,9 +23,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <netinet/ip.h>
 #include <arpa/inet.h>
-
 #include <junkie/tools/miscmacs.h>
 #include <junkie/tools/tempstr.h>
 #include <junkie/tools/ip_addr.h>

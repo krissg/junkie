@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Junkie.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
@@ -28,6 +27,7 @@
 #include <getopt.h>     /* command line parsing */
 #include <libgen.h>     /* basename */
 #include <sys/stat.h>       /* umask needed to fork */
+#include <junkie/config.h>
 #include <junkie/tools/log.h>
 #include <junkie/tools/files.h>
 #include <junkie/tools/mutex.h>

@@ -23,8 +23,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
-#include <netinet/ip.h>
-#include <arpa/inet.h>
 #include <junkie/cpp.h>
 #include <junkie/tools/log.h>
 #include <junkie/tools/miscmacs.h>
@@ -32,6 +30,7 @@
 #include <junkie/proto/proto.h>
 #include <junkie/proto/eth.h>
 #include <junkie/proto/ip.h>
+#include "proto/ip_hdr.h"
 
 static char const Id[] = "$Id: 003ae93bbf458d21ffd9582b447feb9019b93405 $";
 
@@ -63,7 +62,7 @@ char const *ip_info_2_str(struct proto_info const *info_)
     return str;
 }
 
-static void ip_proto_info_ctor(struct ip_proto_info *info, size_t head_len, size_t payload, struct iphdr const *iphdr)
+static void ip_proto_info_ctor(struct ip_proto_info *info, size_t head_len, size_t payload, struct ip_hdr const *iphdr)
 {
     static struct proto_info_ops ops = {
         .to_str = ip_info_2_str,
@@ -71,8 +70,8 @@ static void ip_proto_info_ctor(struct ip_proto_info *info, size_t head_len, size
     proto_info_ctor(&info->info, &ops, head_len, payload);
 
     info->version = iphdr->version;
-    ip_addr_ctor_from_ip4(&info->key.addr[0], iphdr->saddr);
-    ip_addr_ctor_from_ip4(&info->key.addr[1], iphdr->daddr);
+    ip_addr_ctor_from_ip4(&info->key.addr[0], iphdr->src);
+    ip_addr_ctor_from_ip4(&info->key.addr[1], iphdr->dst);
     info->key.protocol = iphdr->protocol;
     info->ttl = iphdr->ttl;
     info->way = 0;  // will be set later
@@ -126,15 +125,14 @@ struct mux_subparser *ip_subparser_lookup(struct parser *parser, struct proto *p
 static enum proto_parse_status ip_parse(struct parser *parser, struct proto_layer *parent, unsigned unused_ way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
     struct mux_parser *mux_parser = DOWNCAST(parser, parser, mux_parser);
-    struct iphdr const *iphdr = (struct iphdr *)packet;
+    struct ip_hdr const *iphdr = (struct ip_hdr *)packet;
 
     // Sanity checks
 
     if (cap_len < sizeof(*iphdr)) return PROTO_TOO_SHORT;
 
     SLOG(LOG_DEBUG, "New packet of %zu bytes, proto %hu, %"PRINIPQUAD"->%"PRINIPQUAD,
-        wire_len, iphdr->protocol,
-        NIPQUAD(&iphdr->saddr), NIPQUAD(&iphdr->daddr));
+        wire_len, iphdr->protocol, NIPQUAD(&iphdr->src), NIPQUAD(&iphdr->dst));
 
     size_t ip_len = ntohs(iphdr->tot_len);
     if (ip_len > wire_len) {
@@ -147,7 +145,7 @@ static enum proto_parse_status ip_parse(struct parser *parser, struct proto_laye
         return PROTO_PARSE_ERR;
     }
 
-    size_t iphdr_len = iphdr->ihl * 4;
+    size_t iphdr_len = iphdr->hdr_len * 4;
     if (iphdr_len > ip_len) {
         SLOG(LOG_DEBUG, "Bogus IPv4 header length : %zu > %zu", iphdr_len, ip_len);
         return PROTO_PARSE_ERR;
@@ -205,7 +203,7 @@ void ip_init(void)
         .parser_del = mux_parser_del,
     };
     mux_proto_ctor(&mux_proto_ip, &ops, &mux_proto_ops, "IPv4", IP_TIMEOUT, sizeof(struct ip_key), IP_HASH_SIZE);
-    eth_subproto_ctor(&eth_subproto, ETH_P_IP, proto_ip);
+    eth_subproto_ctor(&eth_subproto, ETH_PROTO_IPv4, proto_ip);
     LIST_INIT(&ip_subprotos);
 }
 

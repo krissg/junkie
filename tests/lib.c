@@ -46,39 +46,37 @@ void stress_check(struct proto *proto)
  * Build fake IP traffic
  */
 
-#include <netinet/ip.h>
-#include <netinet/udp.h>
-#include <netinet/tcp.h>
+#include "proto/ip_hdr.h"
 
 int iph_ctor(void *ip_, size_t len, uint32_t src, uint32_t dst)
 {
-    struct iphdr *ip = ip_;
+    struct ip_hdr *ip = ip_;
     if (len < sizeof(*ip)) return -1;
 
-    ip->ihl = sizeof(*ip)/4;
+    ip->hdr_len = sizeof(*ip)/4;
     ip->version = 4;
     ip->tos = 0;
     ip->tot_len = htons(len);
     ip->id = 0;
-    ip->frag_off = 0;
+    ip->fragment_off = 0;
     ip->ttl = 64;
     ip->protocol = IPPROTO_UDP;
-    ip->check = 0x1234;
-    ip->saddr = htonl(src);
-    ip->daddr = htonl(dst);
+    ip->checksum = 0x1234;
+    ip->src = htonl(src);
+    ip->dst = htonl(dst);
 
     return 0;
 }
 
 int udph_ctor(void *udp_, size_t len, uint16_t src, uint16_t dst)
 {
-    struct udphdr *udp = udp_;
+    struct udp_hdr *udp = udp_;
     if (len < sizeof(*udp)) return -1;
 
-    udp->source = htons(src);
-    udp->dest = htons(dst);
+    udp->src = htons(src);
+    udp->dst = htons(dst);
     udp->len = htons(len);
-    udp->check = 0x1234;
+    udp->checksum = 0x1234;
 
     return 0;
 }
@@ -86,17 +84,17 @@ int udph_ctor(void *udp_, size_t len, uint16_t src, uint16_t dst)
 int udp_ctor_random(void *packet, size_t len)
 {
     if (0 != iph_ctor(packet, len, rand(), rand())) return -1;
-    return udph_ctor((void *)((struct iphdr *)packet+1), len - sizeof(struct iphdr), rand(), rand());
+    return udph_ctor((void *)((struct ip_hdr *)packet+1), len - sizeof(struct ip_hdr), rand(), rand());
 }
 
 int tcph_ctor(void *tcp_, size_t len, uint16_t src, uint16_t dst, uint32_t seqnum, uint32_t acknum, bool syn, bool fin, bool rst, bool ack)
 {
-    struct tcphdr *tcp = tcp_;
+    struct tcp_hdr *tcp = tcp_;
     if (len < sizeof(*tcp)) return -1;
 
-    tcp->source = htons(src);
-    tcp->dest = htons(dst);
-    tcp->seq = htonl(seqnum);
+    tcp->src = htons(src);
+    tcp->dst = htons(dst);
+    tcp->seq_num = htonl(seqnum);
     tcp->ack_seq = htonl(acknum);
     tcp->res1 = tcp->psh = tcp->urg = tcp->res2 = 0;
     tcp->doff = sizeof(*tcp)/4;  // no options
@@ -105,7 +103,7 @@ int tcph_ctor(void *tcp_, size_t len, uint16_t src, uint16_t dst, uint32_t seqnu
     tcp->ack = ack;
     tcp->rst = rst;
     tcp->window = 0x8000;
-    tcp->check = 0x1234;
+    tcp->checksum = 0x1234;
     tcp->urg_ptr = 0;
 
     return 0;
@@ -114,7 +112,7 @@ int tcph_ctor(void *tcp_, size_t len, uint16_t src, uint16_t dst, uint32_t seqnu
 int tcp_ctor_random(void *packet, size_t len)
 {
     if (0 != iph_ctor(packet, len, rand(), rand())) return -1;
-    return tcph_ctor((void *)((struct iphdr *)packet+1), len - sizeof(struct iphdr), rand(), rand(), rand(), rand(), rand()&1, rand()&1, rand()&1, rand()&1);
+    return tcph_ctor((void *)((struct ip_hdr *)packet+1), len - sizeof(struct ip_hdr), rand(), rand(), rand(), rand(), rand()&1, rand()&1, rand()&1, rand()&1);
 }
 
 int tcp_stream_ctor(struct tcp_stream *stream, size_t len, size_t mtu, uint16_t service_port)
@@ -160,12 +158,12 @@ static ssize_t stream_packet(struct tcp_stream *stream, int way)
     }
 
     size_t const stream_len = syn + fin + payload;
-    size_t packet_len = sizeof(struct iphdr) + sizeof(struct tcphdr) + payload;
+    size_t packet_len = sizeof(struct ip_hdr) + sizeof(struct tcp_hdr) + payload;
 
     if (0 != iph_ctor(stream->packet, packet_len, stream->ip[way], stream->ip[!way])) return -1;
 
-    if (0 != tcph_ctor((void *)((struct iphdr *)stream->packet+1),
-        sizeof(struct tcphdr) + payload,
+    if (0 != tcph_ctor((void *)((struct ip_hdr *)stream->packet+1),
+        sizeof(struct tcp_hdr) + payload,
         stream->port[way], stream->port[!way],
         stream->isn[way] + stream->past_len[way],
         stream->isn[!way] + stream->past_len[!way],

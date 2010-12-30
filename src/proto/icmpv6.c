@@ -21,12 +21,10 @@
 #include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
-#include <arpa/inet.h>
-#include <netinet/icmp6.h>
-#include <netinet/ip6.h>
 #include <junkie/tools/tempstr.h>
-#include <junkie/proto/ip.h>
 #include <junkie/proto/icmp.h>
+#include <junkie/proto/ip.h>
+#include "proto/ip_hdr.h"
 
 static char const icmpv6_Id[] = "$Id: be896b1f62e312d5d97d8f01af293f1a9fd19294 $";
 
@@ -85,18 +83,18 @@ static void icmpv6_proto_info_ctor(struct icmp_proto_info *info, size_t packet_l
 static int icmpv6_extract_err_infos(struct icmp_proto_info *info, uint8_t const *packet, size_t packet_len)
 {
     struct icmp_err *err = &info->err;
-    struct ip6_hdr const *iphdr = (struct ip6_hdr *)packet;
+    struct ipv6_hdr const *iphdr = (struct ipv6_hdr *)packet;
 
     if (packet_len < sizeof(*iphdr)) {
         SLOG(LOG_DEBUG, "Bogus ICMPv6 packet too short for IPv6 header");
         return -1;
     }
 
-    err->protocol = iphdr->ip6_nxt;
-    ip_addr_ctor_from_ip6(err->addr+0, &iphdr->ip6_src);
-    ip_addr_ctor_from_ip6(err->addr+1, &iphdr->ip6_dst);
+    err->protocol = iphdr->next;
+    ip_addr_ctor_from_ip6(err->addr+0, &iphdr->src);
+    ip_addr_ctor_from_ip6(err->addr+1, &iphdr->dst);
 
-    switch (iphdr->ip6_nxt) {
+    switch (iphdr->next) {
         case IPPROTO_TCP:
         case IPPROTO_UDP:
             if (packet_len >= sizeof(*iphdr) + 4) {
@@ -104,7 +102,7 @@ static int icmpv6_extract_err_infos(struct icmp_proto_info *info, uint8_t const 
                 return icmp_extract_err_ports(err, packet + sizeof(*iphdr));
             }
         default:
-            SLOG(LOG_DEBUG, "ICMPv6 Error for unsuported protocol %u", iphdr->ip6_nxt);
+            SLOG(LOG_DEBUG, "ICMPv6 Error for unsuported protocol %u", iphdr->next);
             return 0;
     }
 }
@@ -116,19 +114,19 @@ static bool icmpv6_is_err(uint8_t type)
 
 static enum proto_parse_status icmpv6_parse(struct parser *parser, struct proto_layer *parent, unsigned way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
-    struct icmp6_hdr *icmphdr = (struct icmp6_hdr *)packet;
+    struct icmp_hdr *icmphdr = (struct icmp_hdr *)packet;
 
     // Sanity checks
     if (wire_len < sizeof(*icmphdr)) return PROTO_PARSE_ERR;
     if (cap_len < sizeof(*icmphdr)) return PROTO_TOO_SHORT;
 
     struct icmp_proto_info info;
-    icmpv6_proto_info_ctor(&info, wire_len, icmphdr->icmp6_type, icmphdr->icmp6_code);
+    icmpv6_proto_info_ctor(&info, wire_len, icmphdr->type, icmphdr->code);
     struct proto_layer layer;
     proto_layer_ctor(&layer, parent, parser, &info.info);
 
     // Extract error values
-    if (icmpv6_is_err(icmphdr->icmp6_type)) {
+    if (icmpv6_is_err(icmphdr->type)) {
         if (0 == icmpv6_extract_err_infos(&info, packet + sizeof(*icmphdr), cap_len - sizeof(*icmphdr))) {
             info.set_values |= ICMP_ERR_SET;
         }

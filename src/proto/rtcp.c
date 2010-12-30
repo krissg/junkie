@@ -35,7 +35,7 @@ LOG_CATEGORY_DEC(proto_rtcp);
 LOG_CATEGORY_DEF(proto_rtcp);
 
 struct rtcp_head {
-#   ifdef __LITTLE_ENDIAN
+#   ifndef WORDS_BIGENDIAN
     uint8_t rec_count:5;
     uint8_t padding:1;
     uint8_t version:2;
@@ -57,7 +57,7 @@ struct rtcp_head {
 
 struct rtcp_report_bloc {
     uint32_t ssrc;
-#   ifdef __LITTLE_ENDIAN
+#   ifndef WORDS_BIGENDIAN
     uint32_t fraction_lost:8;
     int32_t tot_lost:24;
 #   else

@@ -7,7 +7,7 @@ libproto_la_SOURCES = \
 	arp.c bittorrent.c cap.c cifs.c dns.c dns_tcp.c \
 	eth.c ftp.c fuzzing.c fuzzing.h \
 	http.c liner.c liner.h httper.c httper.h \
-	icmp.c icmpv6.c ip.c ip6.c mgcp.c netbios.c \
+	icmp.c icmpv6.c ip_hdr.h ip.c ip6.c mgcp.c netbios.c \
 	port_muxer.c proto.c \
 	rtcp.c rtp.c \
 	sdp.c sdper.c sdper.h \

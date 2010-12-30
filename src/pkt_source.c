@@ -35,7 +35,6 @@
 #include <junkie/proto/proto.h>
 #include <junkie/ext.h>
 #include "plugins.h"
-#include "net_hdr.h"
 #include "digest_queue.h"
 
 static char const Id[] = "$Id: 39b7df38bd54e40f37c33511c3ab617d6b719437 $";
@@ -111,8 +110,6 @@ static int parser_callbacks(struct proto_layer *last)
 static int frame_mirror_drop(struct frame *frame, struct digest_queue *q)
 {
     if (! dup_detection_delay) return 0;
-
-    if (frame->cap_len < ETHER_HEADER_SIZE) return 0;
 
     uint8_t digest[DIGEST_SIZE];
     digest_frame(digest, frame);

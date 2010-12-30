@@ -13,7 +13,6 @@ junkie_SOURCES = \
 	main.c \
 	pkt_source.c \
 	pkt_source.h \
-	net_hdr.h \
 	plugins.c \
 	plugins.h
 

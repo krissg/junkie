@@ -22,8 +22,6 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdio.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
 #include <junkie/cpp.h>
 #include <junkie/ext.h>
 #include <junkie/tools/mallocer.h>
@@ -33,6 +31,7 @@
 #include <junkie/tools/queue.h>
 #include <junkie/proto/ip.h>
 #include <junkie/proto/tcp.h>
+#include "proto/ip_hdr.h"
 
 static char const Id[] = "$Id: f1e4973c1763a7a217c77b2e7a667edf3f209eb7 $";
 
@@ -66,7 +65,7 @@ static char const *tcp_info_2_str(struct proto_info const *info_)
     return str;
 }
 
-static void tcp_proto_info_ctor(struct tcp_proto_info *info, size_t head_len, size_t payload, uint16_t sport, uint16_t dport, struct tcphdr const *tcphdr)
+static void tcp_proto_info_ctor(struct tcp_proto_info *info, size_t head_len, size_t payload, uint16_t sport, uint16_t dport, struct tcp_hdr const *tcphdr)
 {
     static struct proto_info_ops ops = {
         .to_str = tcp_info_2_str,
@@ -81,7 +80,7 @@ static void tcp_proto_info_ctor(struct tcp_proto_info *info, size_t head_len, si
     info->fin = tcphdr->fin;
     info->window = ntohs(tcphdr->window);
     info->ack_num = ntohl(tcphdr->ack_seq);
-    info->seq_num = ntohl(tcphdr->seq);
+    info->seq_num = ntohl(tcphdr->seq_num);
 }
 
 /*
@@ -198,7 +197,7 @@ struct mux_subparser *tcp_subparser_lookup(struct parser *parser, struct proto *
 static enum proto_parse_status tcp_parse(struct parser *parser, struct proto_layer *parent, unsigned way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
     struct mux_parser *mux_parser = DOWNCAST(parser, parser, mux_parser);
-    struct tcphdr const *tcphdr = (struct tcphdr *)packet;
+    struct tcp_hdr const *tcphdr = (struct tcp_hdr *)packet;
 
     // Sanity checks
     if (wire_len < sizeof(*tcphdr)) {
@@ -216,12 +215,12 @@ static enum proto_parse_status tcp_parse(struct parser *parser, struct proto_lay
 
     if (tcphdr_len > cap_len) return PROTO_TOO_SHORT;
 
-    uint16_t const sport = ntohs(tcphdr->source);
-    uint16_t const dport = ntohs(tcphdr->dest);
+    uint16_t const sport = ntohs(tcphdr->src);
+    uint16_t const dport = ntohs(tcphdr->dst);
     SLOG(LOG_DEBUG, "New TCP packet of %zu bytes (%zu captured), %zu payload, ports %"PRIu16" -> %"PRIu16" Flags: %s%s%s%s, Seq:%"PRIu32", Ack:%"PRIu32,
         wire_len, cap_len, wire_len - tcphdr_len, sport, dport,
         tcphdr->syn ? "Syn":"", tcphdr->fin ? "Fin":"", tcphdr->ack ? "Ack":"", tcphdr->rst ? "Rst":"",
-        ntohl(tcphdr->seq), ntohl(tcphdr->ack_seq));
+        ntohl(tcphdr->seq_num), ntohl(tcphdr->ack_seq));
 
     // Parse
 

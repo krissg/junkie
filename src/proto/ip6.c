@@ -20,13 +20,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <netinet/ip6.h>
+#include <inttypes.h>
 #include <junkie/cpp.h>
 #include <junkie/tools/log.h>
 #include <junkie/tools/miscmacs.h>
 #include <junkie/proto/proto.h>
 #include <junkie/proto/eth.h>
 #include <junkie/proto/ip.h>
+#include "proto/ip_hdr.h"
 
 static char const Id[] = "$Id: c1c50fb3b93381abf716bfa300605c930e937160 $";
 
@@ -40,7 +41,7 @@ static char const Id[] = "$Id: c1c50fb3b93381abf716bfa300605c930e937160 $";
  * Proto Infos (only the info ctor is different from ipv4
  */
 
-static void ip6_proto_info_ctor(struct ip_proto_info *info, size_t head_len, size_t payload, unsigned version, struct ip6_hdr const *iphdr)
+static void ip6_proto_info_ctor(struct ip_proto_info *info, size_t head_len, size_t payload, unsigned version, struct ipv6_hdr const *iphdr)
 {
     static struct proto_info_ops ops = {
         .to_str = ip_info_2_str,
@@ -48,10 +49,10 @@ static void ip6_proto_info_ctor(struct ip_proto_info *info, size_t head_len, siz
     proto_info_ctor(&info->info, &ops, head_len, payload);
 
     info->version = version;
-    ip_addr_ctor_from_ip6(&info->key.addr[0], &iphdr->ip6_src);
-    ip_addr_ctor_from_ip6(&info->key.addr[1], &iphdr->ip6_dst);
-    info->key.protocol = iphdr->ip6_nxt;
-    info->ttl = iphdr->ip6_hlim;
+    ip_addr_ctor_from_ip6(&info->key.addr[0], &iphdr->src);
+    ip_addr_ctor_from_ip6(&info->key.addr[1], &iphdr->dst);
+    info->key.protocol = iphdr->next;
+    info->ttl = iphdr->hop_limit;
 }
 
 /*
@@ -81,7 +82,7 @@ void ip6_subproto_dtor(struct ip_subproto *ip_subproto)
 static enum proto_parse_status ip6_parse(struct parser *parser, struct proto_layer *parent, unsigned unused_ way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
     struct mux_parser *mux_parser = DOWNCAST(parser, parser, mux_parser);
-    struct ip6_hdr const *iphdr = (struct ip6_hdr *)packet;
+    struct ipv6_hdr const *iphdr = (struct ipv6_hdr *)packet;
     size_t const iphdr_len = sizeof(*iphdr);
 
     // Sanity checks
@@ -94,17 +95,16 @@ static enum proto_parse_status ip6_parse(struct parser *parser, struct proto_lay
     if (cap_len < iphdr_len) return PROTO_TOO_SHORT;
 
     SLOG(LOG_DEBUG, "New packet of %zu bytes, proto %"PRIu8", %"PRINIPQUAD6"->%"PRINIPQUAD6,
-        wire_len, iphdr->ip6_nxt,
-        NIPQUAD6(&iphdr->ip6_src), NIPQUAD6(&iphdr->ip6_dst));
+        wire_len, iphdr->next, NIPQUAD6(&iphdr->src), NIPQUAD6(&iphdr->dst));
 
-    size_t const payload = ntohs(iphdr->ip6_plen);
+    size_t const payload = ntohs(iphdr->payload_len);
     size_t const ip_len = iphdr_len + payload;
     if (ip_len > wire_len) {
         SLOG(LOG_DEBUG, "Bogus IPv6 total length : %zu > %zu", ip_len, wire_len);
         return PROTO_PARSE_ERR;
     }
 
-    unsigned const version = iphdr->ip6_vfc >> 4;
+    unsigned const version = iphdr->version;
     if (version != 6) {
         SLOG(LOG_DEBUG, "Bogus IPv6 version : %u instead of 6", version);
         return PROTO_PARSE_ERR;
@@ -159,7 +159,7 @@ void ip6_init(void)
         .parser_del = mux_parser_del,
     };
     mux_proto_ctor(&mux_proto_ip6, &ops, &mux_proto_ops, "IPv6", IP6_TIMEOUT, sizeof(struct ip_key), IP6_HASH_SIZE);
-    eth_subproto_ctor(&eth_subproto, ETH_P_IPV6, proto_ip6);
+    eth_subproto_ctor(&eth_subproto, ETH_PROTO_IPv6, proto_ip6);
     LIST_INIT(&ip6_subprotos);
 }
 

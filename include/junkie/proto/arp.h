@@ -3,8 +3,8 @@
 #ifndef ARP_H_100402
 #define ARP_H_100402
 #include <stdint.h>
-#include <netinet/ether.h>
 #include <junkie/proto/proto.h>
+#include <junkie/proto/eth.h>   // for ETH_ADDR_LEN
 #include <junkie/tools/ip_addr.h>
 
 /** @file
@@ -15,13 +15,13 @@ extern struct proto *proto_arp;
 
 /// Description of an ARP message
 struct arp_proto_info {
-    struct proto_info info;         ///< Generic infos
-    unsigned opcode;                ///< 1 for requests, 2 for responses
+    struct proto_info info;             ///< Generic infos
+    enum arp_opcode { ARP_REQUEST=1, ARP_REPLY=2 } opcode;
     bool proto_addr_is_ip;
     bool hw_addr_is_eth;
-    struct ip_addr sender;          ///< Set iff proto_addr_is_ip
-    struct ip_addr target;          ///< Set iff proto_addr_is_ip
-    uint8_t hw_target[ETH_ALEN];    ///< Set iff operation == 2
+    struct ip_addr sender;              ///< Set iff proto_addr_is_ip
+    struct ip_addr target;              ///< Set iff proto_addr_is_ip
+    uint8_t hw_target[ETH_ADDR_LEN];    ///< Set iff operation == 2
 };
 
 void arp_init(void);

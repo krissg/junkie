@@ -17,7 +17,6 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Junkie.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "config.h"
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -26,6 +25,7 @@
 #include <pthread.h>
 #include <libguile.h>
 #include <strings.h>
+#include <junkie/config.h>
 #include <junkie/cpp.h>
 #include <junkie/tools/miscmacs.h>
 #include <junkie/tools/log.h>

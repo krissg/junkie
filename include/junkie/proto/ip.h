@@ -3,8 +3,6 @@
 #ifndef IP_H_100402
 #define IP_H_100402
 #include <stdbool.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include <junkie/tools/ip_addr.h>
 #include <junkie/tools/queue.h>
 #include <junkie/proto/proto.h>

@@ -8,7 +8,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([src/main.c])
-AC_CONFIG_HEADERS([src/config.h])
+AC_CONFIG_HEADERS([include/junkie/config.h])
 LT_INIT()
 
 AC_SUBST(TAGNAME, m4_esyscmd([git describe --tags || (if git symbolic-ref HEAD >/dev/null 2>&1; then git symbolic-ref HEAD | cut -d/ -f 3- ; else git name-rev HEAD | cut -d' ' -f 2; fi)]))
@@ -28,12 +28,13 @@ AC_CHECK_LIB(pthread, pthread_mutex_init, , [exit 1])
 AC_CHECK_LIB(ltdl, lt_dlopen, , [exit 1])
 
 # Checks for header files.
-AC_CHECK_HEADERS([arpa/inet.h fcntl.h inttypes.h limits.h malloc.h netinet/in.h sys/param.h sys/socket.h sys/time.h syslog.h sys/prctl.h])
+AC_CHECK_HEADERS([fcntl.h grp.h libgen.h inttypes.h limits.h malloc.h netinet/in.h arpa/inet.h sys/param.h sys/socket.h sys/time.h syslog.h sys/prctl.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_HEADER_STDBOOL
 AC_TYPE_UID_T
 AC_TYPE_PID_T
+AC_C_BIGENDIAN()
 
 # Checks for library functions.
 AC_FUNC_CHOWN

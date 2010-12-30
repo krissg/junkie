@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <netinet/ether.h>  // for struct ether_arp
 #include <junkie/cpp.h>
 #include <junkie/tools/log.h>
 #include <junkie/tools/ip_addr.h>
@@ -36,16 +35,24 @@ static char const Id[] = "$Id: 41d9ce8a5da8afbfb5153b5c45632295bc52b6f9 $";
 LOG_CATEGORY_DEC(proto_arp);
 LOG_CATEGORY_DEF(proto_arp);
 
+// Description of an ARP header
+struct arp_hdr {
+    uint16_t hard_addr_fmt, prot_addr_fmt;
+    uint8_t hard_addr_len, prot_addr_len;
+    uint16_t opcode;
+} packed_;
+
 /*
  * Parse
  */
 
-static char const *arp_opcode_2_str(unsigned opcode)
+static char const *arp_opcode_2_str(enum arp_opcode opcode)
 {
     switch (opcode) {
-        case 1: return "request";
-        case 2: return "response";
+        case ARP_REQUEST: return "request";
+        case ARP_REPLY:   return "reply";
     }
+    assert(!"Unknown ARP opcode");
     return "unknown";
 }
 
@@ -63,23 +70,23 @@ static char const *arp_info_2_str(struct proto_info const *info_)
     return str;
 }
 
-static void fetch_ip(struct ip_addr *ip, uint16_t ar_pro, uint8_t const *ptr)
+static void fetch_ip(struct ip_addr *ip, unsigned prot_addr_fmt, uint8_t const *ptr)
 {
-    switch (ar_pro) {
-        case ETH_P_IP:;
+    switch (prot_addr_fmt) {
+        case ETH_PROTO_IPv4:;
             uint32_t addr;
             memcpy(&addr, ptr, sizeof(addr));
             ip_addr_ctor_from_ip4(ip, addr);
             break;
-        case ETH_P_IPV6:
+        case ETH_PROTO_IPv6:
             ip_addr_ctor_from_ip6(ip, (struct in6_addr *)ptr);
             break;
     }
 }
 
-static void fetch_hw(uint8_t mac[ETH_ALEN], uint16_t ar_hrd, uint8_t const *ptr)
+static void fetch_hw(uint8_t mac[ETH_ADDR_LEN], unsigned hard_addr_fmt, uint8_t const *ptr)
 {
-    if (ar_hrd == 1) {
+    if (hard_addr_fmt == 1) {
         memcpy(mac, ptr, sizeof(mac));
     } else {
         memset(mac, 0, sizeof(mac));
@@ -88,7 +95,7 @@ static void fetch_hw(uint8_t mac[ETH_ALEN], uint16_t ar_hrd, uint8_t const *ptr)
 
 static enum proto_parse_status arp_parse(struct parser *parser, struct proto_layer *parent, unsigned way, uint8_t const *payload, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
-    struct ether_arp const *arp = (struct ether_arp *)payload;
+    struct arp_hdr const *arp = (struct arp_hdr *)payload;
 
     // Sanity Checks
 
@@ -98,35 +105,35 @@ static enum proto_parse_status arp_parse(struct parser *parser, struct proto_lay
     if (cap_len < sizeof(*arp)) return PROTO_TOO_SHORT;
 
     // Now that we can dereference enough of the payload, display a useful log message
-    SLOG(LOG_DEBUG, "New ARP packet with hard addr type %hu and proto addr type %hu", arp->ea_hdr.ar_hrd, arp->ea_hdr.ar_pro);
+    unsigned const hard_addr_fmt = ntohs(arp->hard_addr_fmt);
+    unsigned const prot_addr_fmt = ntohs(arp->prot_addr_fmt);
+    size_t const hard_addr_len = arp->hard_addr_len;
+    size_t const prot_addr_len = arp->prot_addr_len;
 
-    unsigned const ar_hrd = ntohs(arp->ea_hdr.ar_hrd);
-    unsigned const ar_pro = ntohs(arp->ea_hdr.ar_pro);
-    size_t const ar_hln = arp->ea_hdr.ar_hln;
-    size_t const ar_pln = arp->ea_hdr.ar_pln;
+    SLOG(LOG_DEBUG, "New ARP packet with hard addr type %hu and proto addr type %hu", hard_addr_fmt, prot_addr_fmt);
 
-    size_t arp_msg_size = sizeof(arp->ea_hdr) + 2*ar_hln + 2*ar_pln;
+    size_t arp_msg_size = sizeof(*arp) + 2*hard_addr_len + 2*prot_addr_len;
     if (wire_len < arp_msg_size) return PROTO_PARSE_ERR;
     if (cap_len < arp_msg_size) return PROTO_TOO_SHORT;
 
     // Check addr length correspond to advertised types
-    if (ar_hrd == 1 /* Ethernet */ && ar_hln != 6) {
-        SLOG(LOG_DEBUG, "Bad hard addr length for Ethernet (%zu)", ar_hln);
+    if (hard_addr_fmt == 1 /* Ethernet */ && hard_addr_len != ETH_ADDR_LEN) {
+        SLOG(LOG_DEBUG, "Bad hard addr length for Ethernet (%zu)", hard_addr_len);
         return PROTO_PARSE_ERR;
     }
-    if (ar_pro == ETH_P_IP && ar_pln != 4) {
-        SLOG(LOG_DEBUG, "Bad hard addr length for IPv4 (%zu)", ar_pln);
+    if (prot_addr_fmt == ETH_PROTO_IPv4 && prot_addr_len != 4) {
+        SLOG(LOG_DEBUG, "Bad hard addr length for IPv4 (%zu)", prot_addr_len);
         return PROTO_PARSE_ERR;
     }
-    if (ar_pro == ETH_P_IPV6 && ar_pln != 16) {
-        SLOG(LOG_DEBUG, "Bad hard addr length for IPv6 (%zu)", ar_pln);
+    if (prot_addr_fmt == ETH_PROTO_IPv6 && prot_addr_len != 16) {
+        SLOG(LOG_DEBUG, "Bad hard addr length for IPv6 (%zu)", prot_addr_len);
         return PROTO_PARSE_ERR;
     }
 
     // Check operation code
-    unsigned const opcode = ntohs(arp->ea_hdr.ar_op);
-    if (opcode != ARPOP_REQUEST && opcode != ARPOP_REPLY) {
-        SLOG(LOG_DEBUG, "Unknown ARP opcode (%hu)", opcode);
+    unsigned const opcode = ntohs(arp->opcode);
+    if (opcode != ARP_REQUEST && opcode != ARP_REPLY) {
+        SLOG(LOG_DEBUG, "Unknown ARP opcode (%u)", opcode);
         return PROTO_PARSE_ERR;
     }
 
@@ -139,20 +146,20 @@ static enum proto_parse_status arp_parse(struct parser *parser, struct proto_lay
 
     // Gather all interesting data
     info.opcode = opcode;
-    info.proto_addr_is_ip = ar_pro == ETH_P_IP || ar_pro == ETH_P_IPV6;
-    info.hw_addr_is_eth = ar_hrd == 1;
+    info.proto_addr_is_ip = prot_addr_fmt == ETH_PROTO_IPv4 || prot_addr_fmt == ETH_PROTO_IPv6;
+    info.hw_addr_is_eth = hard_addr_fmt == 1;
 
-    uint8_t const *ptr = (uint8_t *)arp->arp_sha;
-    ptr += arp->ea_hdr.ar_hln;  // skip sender's hw addr
+    uint8_t const *ptr = (uint8_t *)arp + sizeof(*arp);
+    ptr += hard_addr_len;  // skip sender's hw addr
 
-    fetch_ip(&info.sender, ar_pro, ptr);
-    ptr += ar_pln;
+    fetch_ip(&info.sender, prot_addr_fmt, ptr);
+    ptr += prot_addr_len;
 
-    fetch_hw(info.hw_target, ar_hrd, ptr);
-    ptr += ar_hln;
+    fetch_hw(info.hw_target, hard_addr_fmt, ptr);
+    ptr += hard_addr_len;
 
-    fetch_ip(&info.target, ar_pro, ptr);
-    ptr += ar_pln;
+    fetch_ip(&info.target, prot_addr_fmt, ptr);
+    ptr += prot_addr_len;
 
     struct proto_layer layer;
     proto_layer_ctor(&layer, parent, parser, &info.info);
@@ -179,7 +186,7 @@ void arp_init(void)
         .parser_del = uniq_parser_del,
     };
     uniq_proto_ctor(&uniq_proto_arp, &ops, "ARP");
-    eth_subproto_ctor(&arp_eth_subproto, ETH_P_ARP, proto_arp);
+    eth_subproto_ctor(&arp_eth_subproto, ETH_PROTO_ARP, proto_arp);
 }
 
 void arp_fini(void)

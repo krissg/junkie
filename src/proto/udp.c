@@ -21,14 +21,13 @@
 #include <assert.h>
 #include <stdio.h>
 #include <inttypes.h>
-#include <netinet/udp.h>
-#include <arpa/inet.h>
 #include <junkie/cpp.h>
 #include <junkie/ext.h>
 #include <junkie/tools/tempstr.h>
 #include <junkie/tools/log.h>
 #include <junkie/proto/ip.h>
 #include <junkie/proto/udp.h>
+#include "proto/ip_hdr.h"
 
 static char const udp_Id[] = "$Id: 0d4dcb20e67fb576b956de6ca7a66a15ccb9d583 $";
 
@@ -126,7 +125,7 @@ struct mux_subparser *udp_subparser_lookup(struct parser *parser, struct proto *
 static enum proto_parse_status udp_parse(struct parser *parser, struct proto_layer *parent, unsigned way, uint8_t const *packet, size_t cap_len, size_t wire_len, struct timeval const *now, proto_okfn_t *okfn)
 {
     struct mux_parser *mux_parser = DOWNCAST(parser, parser, mux_parser);
-    struct udphdr const *udphdr = (struct udphdr *)packet;
+    struct udp_hdr const *udphdr = (struct udp_hdr *)packet;
 
     // Sanity checks
     if (wire_len < sizeof(*udphdr)) {
@@ -148,8 +147,8 @@ static enum proto_parse_status udp_parse(struct parser *parser, struct proto_lay
         return PROTO_PARSE_ERR;
     }
 
-    uint16_t const sport = ntohs(udphdr->source);
-    uint16_t const dport = ntohs(udphdr->dest);
+    uint16_t const sport = ntohs(udphdr->src);
+    uint16_t const dport = ntohs(udphdr->dst);
     SLOG(LOG_DEBUG, "New UDP packet of %zu bytes (%zu captured), ports %"PRIu16" -> %"PRIu16, wire_len, cap_len, sport, dport);
 
     // Parse

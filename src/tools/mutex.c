@@ -17,9 +17,9 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with Junkie.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "config.h"
 #include <string.h>
 #include <pthread.h>
+#include <junkie/config.h>
 #ifdef HAVE_SYS_PRCTL_H
 #   include <sys/prctl.h>
 #endif

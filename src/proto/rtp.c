@@ -34,7 +34,7 @@ LOG_CATEGORY_DEC(proto_rtp);
 LOG_CATEGORY_DEF(proto_rtp);
 
 struct rtp_header {
-#   ifdef __LITTLE_ENDIAN
+#   ifndef WORDS_BIGENDIAN
     uint8_t csrc_count:4;
     uint8_t extension:1;
     uint8_t padding:1;
