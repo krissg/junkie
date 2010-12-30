@@ -29,13 +29,13 @@ struct ip_hdr {
 // Definition of an IPv6 header
 struct ipv6_hdr {
 #   ifdef WORDS_BIGENDIAN
-    uint32_t version:4;
-    uint32_t class:4;
-    uint32_t flow:24;
+    uint8_t version:4;
+    uint8_t class:4;
+    uint8_t flow[3];
 #   else
-    uint32_t flow:24;
-    uint32_t class:4;
-    uint32_t version:4;
+    uint8_t class:4;
+    uint8_t version:4;
+    uint8_t flow[3];
 #   endif
     uint16_t payload_len;
     uint8_t next;

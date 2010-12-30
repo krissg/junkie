@@ -5,6 +5,8 @@
 #include <junkie/cpp.h>
 #include "lib.h"
 #include "proto/ip.c"
+#define Id Idv6
+#include "proto/ip6.c"
 
 /*
  * Parse check
@@ -12,7 +14,7 @@
 
 static struct parse_test {
     size_t size;
-    uint8_t const packet[100];
+    uint8_t const packet[104];
     struct ip_proto_info expected;
 } parse_tests [] = {
     {
@@ -36,7 +38,7 @@ static struct parse_test {
             0x45U, 0x10U, 0x00U, 0x34U, 0x07U, 0x71U, 0x40U, 0x00U, 0x40U, 0x06U, 0x53U, 0xf5U, 0xc0U, 0xa8U, 0x0aU, 0x09U,
             0x52U, 0x43U, 0xc2U, 0x59U, 0xd1U, 0x96U, 0x08U, 0xaeU, 0x29U, 0x1cU, 0x9eU, 0x07U, 0x64U, 0xfbU, 0x34U, 0xe0U,
             0x80U, 0x10U, 0x01U, 0xf5U, 0xb2U, 0x55U, 0x00U, 0x00U, 0x01U, 0x01U, 0x08U, 0x0aU, 0x0dU, 0x55U, 0x2dU, 0x1dU,
-            0x2eU, 0xe9U, 0x3eU, 0x85U
+            0x2eU, 0xe9U, 0x3eU, 0x85U,
         }, .expected = {
             .info = { .head_len = 20, .payload = 32 }, .version = 4, .ttl = 64,
             .key = {
@@ -44,6 +46,25 @@ static struct parse_test {
                 .addr = {
                     { .family = AF_INET, .u = { .v4 = { 0x090aa8c0U } } },
                     { .family = AF_INET, .u = { .v4 = { 0x59c24352U } } },
+                },
+            },
+        },
+    }, {
+        .size = 16*6+8, .packet = {
+            0x60U, 0x00U, 0x00U, 0x00U, 0x00U, 0x40U, 0x3aU, 0x40U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+            0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+            0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U, 0x80U, 0x00U, 0x4aU, 0x19U, 0xbbU, 0x5dU, 0x00U, 0x01U,
+            0xdeU, 0xb9U, 0x1cU, 0x4dU, 0x00U, 0x00U, 0x00U, 0x00U, 0xbbU, 0x31U, 0x05U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+            0x10U, 0x11U, 0x12U, 0x13U, 0x14U, 0x15U, 0x16U, 0x17U, 0x18U, 0x19U, 0x1aU, 0x1bU, 0x1cU, 0x1dU, 0x1eU, 0x1fU,
+            0x20U, 0x21U, 0x22U, 0x23U, 0x24U, 0x25U, 0x26U, 0x27U, 0x28U, 0x29U, 0x2aU, 0x2bU, 0x2cU, 0x2dU, 0x2eU, 0x2fU,
+            0x30U, 0x31U, 0x32U, 0x33U, 0x34U, 0x35U, 0x36U, 0x37U,
+        }, .expected = {
+            .info = { .head_len = 40, .payload = 64 }, .version = 6, .ttl = 64,
+            .key = {
+                .protocol = 0x3a,
+                .addr = {
+                    { .family = AF_INET6, .u = { .v6 = { .s6_addr = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, } } } },
+                    { .family = AF_INET6, .u = { .v6 = { .s6_addr = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, } } } },
                 },
             },
         },
@@ -74,13 +95,18 @@ static void parse_check(size_t cap_len)
     timeval_set_now(&now);
     struct parser *ip_parser = proto_ip->ops->parser_new(proto_ip, &now);
     assert(ip_parser);
+    struct parser *ip6_parser = proto_ip6->ops->parser_new(proto_ip, &now);
+    assert(ip6_parser);
 
     for (current_test = 0; current_test < NB_ELEMS(parse_tests); current_test++) {
-        size_t const len = parse_tests[current_test].size;
-        int ret = ip_parse(ip_parser, NULL, 0, parse_tests[current_test].packet, len < cap_len ? len : cap_len, len, &now, ip_info_check);
+        struct parse_test const *const test = parse_tests + current_test;
+        size_t const len = test->size;
+        int ret =
+            (test->expected.version == 4 ? ip_parse : ip6_parse)(ip_parser, NULL, 0, parse_tests[current_test].packet, len < cap_len ? len : cap_len, len, &now, ip_info_check);
         assert(0 == ret);
     }
 
+    parser_unref(ip6_parser);
     parser_unref(ip_parser);
 }
 
@@ -88,6 +114,7 @@ int main(void)
 {
     log_init();
     ip_init();
+    ip6_init();
     log_set_level(LOG_DEBUG, NULL);
     log_set_file("ip_check.log");
 
@@ -97,6 +124,7 @@ int main(void)
     }
     stress_check(proto_ip);
 
+    ip6_fini();
     ip_fini();
     log_fini();
     return EXIT_SUCCESS;
