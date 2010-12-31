@@ -21,6 +21,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <pthread.h>
+#include <junkie/config.h>
 #include <junkie/tools/tempstr.h>
 #include <junkie/tools/miscmacs.h>
 #include <junkie/cpp.h>
@@ -48,6 +49,7 @@ char *tempstr_printf(char const *fmt, ...)
 
 // FIXME: move me into tools/string ?
 
+#ifndef HAVE_STRNSTR
 #include <string.h>
 #define BUF_MAXSZ 4096
 
@@ -69,5 +71,5 @@ char const *strnstr(char const *haystack, char const *needle, size_t len)
 
     return &haystack[offset];
 }
-
+#endif
 

@@ -42,26 +42,27 @@ static struct parse_test {
         "K: 230614237\n"
         "X: 3d33000\n"
         "R: L/hf, L/hu\n",
-        .expected[0] = {
-            .info = { .head_len = 15, .payload = 0 },
-            .response = true,
-            .u.resp = {
-                .code = 200,
-                .txid = 64440,
+        .expected = {
+            {
+                .info = { .head_len = 15, .payload = 0 },
+                .response = true,
+                .u.resp = {
+                    .code = 200,
+                    .txid = 64440,
+                },
+                .observed = 0, .signaled = 0,
+                .dialed = "", .cnx_id = "", .call_id = "",
+            }, {
+                .info = { .head_len = 93, .payload = 0 },
+                .response = false,
+                .u.query = {
+                    .command = MGCP_NotificationRequest,
+                    .txid = 230621083,
+                    .endpoint = "aaln/1@[172.25.51.149]",
+                },
+                .observed = 0, .signaled = 0,
+                .dialed = "", .cnx_id = "", .call_id = "",
             },
-            .observed = 0, .signaled = 0,
-            .dialed = "", .cnx_id = "", .call_id = "",
-        },
-        .expected[1] = {
-            .info = { .head_len = 93, .payload = 0 },
-            .response = false,
-            .u.query = {
-                .command = MGCP_NotificationRequest,
-                .txid = 230621083,
-                .endpoint = "aaln/1@[172.25.51.149]",
-            },
-            .observed = 0, .signaled = 0,
-            .dialed = "", .cnx_id = "", .call_id = "",
         },
         .ret = 0,
     }, {

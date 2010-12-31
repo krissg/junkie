@@ -53,3 +53,4 @@ tests/udp_check
 tests/arp_check
 doxydoc
 config/instvars.scm
+tests/tags

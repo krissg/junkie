@@ -1,6 +1,7 @@
 #ifndef TEMPSTR_100407
 #define TEMPSTR_100407
 #include <junkie/cpp.h>
+#include <junkie/config.h>
 
 /** @file
  * @brief Return temporary strings that does not need to be freed.
@@ -17,6 +18,8 @@
 char *tempstr(void);
 char *tempstr_printf(char const *fmt, ...) a_la_printf_(1, 2);
 
-char const *strnstr(char const *haystack, char const *needle, size_t len);
+#ifndef HAVE_STRNSTR
+char const *strnstr(char const *haystack, char const *needle, size_t len) pure_;
+#endif
 
 #endif

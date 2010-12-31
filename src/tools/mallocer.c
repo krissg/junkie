@@ -20,7 +20,10 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
-#include <malloc.h>
+#include <junkie/config.h>
+#ifdef HAVE_MALLOC_H
+#   include <malloc.h>
+#endif
 #include <junkie/ext.h>
 #include <junkie/tools/mallocer.h>
 #include <junkie/tools/mutex.h>
@@ -125,7 +128,10 @@ char *mallocer_strdup(struct mallocer *mallocer, char const *str)
 static struct ext_function sg_malloc_stats;
 static SCM g_malloc_stats(void)
 {
+#   ifdef HAVE_MALLOC_STATS
     malloc_stats();
+#   endif
+#   ifdef HAVE_MALLINFO
     struct mallinfo info = mallinfo();
     // See g_proto_stats
 #   define CELL(field, name) scm_cons(scm_from_locale_symbol(name), scm_from_int(info.field))
@@ -141,6 +147,9 @@ static SCM g_malloc_stats(void)
         CELL(keepcost, "topmost-free-bytes"),
         SCM_UNDEFINED);
 #   undef CELL
+#   else    // HAVE_MALLINFO
+    return scm_list_n(SCM_UNDEFINED);
+#   endif   // HAVE_MALLINFO
 }
 
 static struct ext_function sg_mallocer_names;

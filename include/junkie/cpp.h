@@ -19,78 +19,25 @@
  * in order for junkie to work properly.
  */
 
-#ifndef pure__
-#   if __GNUC_PREREQ(2, 96)
-#       define pure_ __attribute__((pure))
-#   else
-#       define pure_
-#   endif
+#ifdef __GNUC__
+/// functions which result only depends on inputs be careful of thread safety, etc.
+#   define pure_ __attribute__((pure))
+#   define hot_ __attribute__((hot))    ///< for often-called function
+#   define cold_  __attribute__((cold))    ///< for rarely-called function
+#   define likely_(x) __builtin_expect(!!(x), 1) ///< very probable branch in if statement
+#   define unlikely_(x)  __builtin_expect(!!(x), 0) ///< very improbable branch in if statement
+#   define unused_ __attribute__((__unused__))
+#   define a_la_printf_(str_i, arg_i) __attribute__((__format__(__printf__, str_i, arg_i)))
+#   define packed_ __attribute__((__packed__))
 #else
-#   define pure_  ///< functions which result only depends on inputs be careful of thread safety, etc.
-#endif
-
-#ifndef hot_
-#   if __GNUC_PREREQ(4, 3)
-#       define hot_ __attribute__((hot))    ///< for often-called function
-#   else
-#       define hot_
-#   endif
-#else
+#   define pure_
 #   define hot_
-#endif
-
-#ifndef cold_
-#   if __GNUC_PREREQ(4, 3)
-#       define cold_  __attribute__((cold))    ///< for rarely-called function
-#   else
-#       define cold_
-#   endif
-#else
 #   define cold_
-#endif
-
-#ifndef likely_
-#   if __GNUC_PREREQ(2, 96)
-#       define likely_(x) __builtin_expect(!!(x), 1) ///< very probable branch in if statement
-#   else
-#       define likely_(x)
-#   endif
-#else
 #   define likely_(x)
-#endif
-
-#ifndef unlikely_
-#   if __GNUC_PREREQ(2, 96)
-#       define unlikely_(x)  __builtin_expect(!!(x), 0) ///< very improbable branch in if statement
-#   else
-#       define unlikely_(x)
-#   endif
-#else
 #   define unlikely_(x)
-#endif
-
-#ifndef unused_
-#   if __GNUC_PREREQ(3, 0)
-#       define unused_ __attribute__((__unused__))
-#   else
-#       define unused_
-#   endif
-#endif
-
-#ifndef a_la_printf_
-#   if __GNUC_PREREQ(3,0)
-#       define a_la_printf_(str_i, arg_i) __attribute__((__format__(__printf__, str_i, arg_i)))
-#   else
-#       define a_la_printf_(str_i, arg_i)
-#   endif
-#endif
-
-#ifndef packed_
-#   if __GNUC_PREREQ(3,0)
-#       define packed_ __attribute__((__packed__))
-#   else
-#       define packed_
-#   endif
+#   define unused_
+#   define a_la_printf_
+#   define packed_
 #endif
 
 #endif
